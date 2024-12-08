@@ -26,7 +26,7 @@ FROM
     SELECT
       chair_id,
       created_at,
-      (
+      ABS(
         latitude - LAG (latitude) OVER (
           PARTITION BY
             chair_id
