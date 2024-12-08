@@ -135,8 +135,26 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		ctx,
 		distance,
 		`SELECT chair_id, created_at, latitude, longitude, distance FROM distance WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
-	); err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
+	); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+		if _, err := tx.ExecContext(
+			ctx,
+			`INSERT INTO distance (chair_id, created_at, latitude, longitude, distance) VALUES (?, CURRENT_TIMESTAMP(6), ?, ?, 0)`,
+			chair.ID, req.Latitude, req.Longitude,
+		); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+	} else {
+		if _, err := tx.ExecContext(
+			ctx,
+			`INSERT INTO distance (chair_id, created_at, latitude, longitude, distance) VALUES (?, CURRENT_TIMESTAMP(6), ?, ?, ?)`,
+			chair.ID, distance.Latitude, distance.Longitude, abs(distance.Latitude-req.Latitude)+abs(distance.Longitude-req.Longitude),
+		); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -144,8 +162,8 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO distance (chair_id, created_at, latitude, longitude, distance) VALUES (?, CURRENT_TIMESTAMP(6), ?, ?, ?)`,
-		chair.ID, distance.Latitude, distance.Longitude, distance.Distance+abs(distance.Latitude-req.Latitude)+abs(distance.Longitude-req.Longitude),
+		`INSERT INTO distance_table (chair_id, total_distance, created_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))`,
+		chair.ID, distance.Distance+abs(distance.Latitude-req.Latitude)+abs(distance.Longitude-req.Longitude),
 	); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
