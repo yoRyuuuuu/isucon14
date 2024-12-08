@@ -772,7 +772,7 @@ func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNoti
 	}
 
 	query := `
-		SELECT r.id, r.evaluation, rs.status rs.created_at FROM rides AS r
+		SELECT r.id, r.evaluation, rs.status, rs.created_at FROM rides AS r
 			INNER JOIN ride_statuses AS rs ON r.id = rs.ride_id
 			WHERE r.chair_id = ?
 			ORDER BY rs.created_at
