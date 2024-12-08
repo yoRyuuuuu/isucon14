@@ -8,6 +8,8 @@ CREATE INDEX chairs_access_token_idx ON chairs(access_token);
 
 CREATE INDEX rides_idx ON rides(user_id,created_at DESC);
 
+CREATE INDEX coupons_used_by_idx ON coupons(used_by);
+
 DROP TABLE IF EXISTS chair_distance;
 
 CREATE TABLE chair_distance (
