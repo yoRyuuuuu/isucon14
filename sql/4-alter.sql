@@ -12,6 +12,14 @@ CREATE TABLE distance (
   distance INTEGER COMMENT '移動距離'
 );
 
+DROP TABLE IF EXISTS distance_table;
+
+CREATE TABLE distance_table (
+  char_id VARCHAR(26) NOT NULL COMMENT '割り当てられた椅子ID',
+  total_distance INTEGER NOT NULL COMMENT '移動距離',
+  total_distance_updated_at DATETIME (6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '更新日時'
+);
+
 INSERT INTO
   distance (
     chair_id,
@@ -42,3 +50,12 @@ SELECT
   ) AS distance
 FROM
   chair_locations;
+
+SELECT
+  chair_id,
+  SUM(IFNULL (distance, 0)) AS total_distance,
+  MAX(created_at) AS total_distance_updated_at
+FROM
+  distance
+GROUP BY
+  chair_id;
