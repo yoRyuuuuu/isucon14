@@ -96,9 +96,9 @@ type chairPostCoordinateResponse struct {
 }
 
 type Distance struct {
-	ChairID                string `json:"chair_id"`
-	TotalDistance          int    `json:"total_distance"`
-	TotalDistanceUpdatedAt int64  `json:"total_distance_updated_at"`
+	ChairID                string `db:"chair_id"`
+	TotalDistance          int    `db:"total_distance"`
+	TotalDistanceUpdatedAt int64  `db:"total_distance_updated_at"`
 }
 
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
