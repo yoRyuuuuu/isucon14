@@ -150,7 +150,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
 			chair.ID,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		log.Printf("INSERT chair_distance: %v", err)
+			log.Printf("SELECT chair_distance: %v", err)
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -162,6 +162,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 				`INSERT INTO chair_distance (chair_id, total_distance, total_distance_updated_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))`,
 				chair.ID, newDist,
 			); err != nil {
+				log.Printf("INSERT chair_distance: %v", err)
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
@@ -171,6 +172,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 				`UPDATE chair_distance SET total_distance = ? WHERE chair_id = ?`,
 				int64(distance.TotalDistance+newDist), chair.ID,
 			); err != nil {
+				log.Printf("UPDATE chair_distance: %v", err)
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
