@@ -281,5 +281,9 @@ func (q *chairLocationQueue) insert(ctx context.Context) error {
 		}
 	}
 
+	if err := tx.Commit(); err != nil {
+		return errors.New("failed to commit transaction: " + err.Error())
+	}
+
 	return nil
 }
