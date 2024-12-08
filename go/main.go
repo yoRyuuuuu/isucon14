@@ -222,11 +222,14 @@ func (q *chairLocationQueue) insert(ctx context.Context) error {
 	q.mu.Lock()
 
 	if len(q.queue) == 0 {
+		q.mu.Unlock()
 		return nil
 	}
 
 	data := []*QueueData{}
 	copy(data, q.queue)
+
+	clear(q.queue)
 
 	q.mu.Unlock()
 
