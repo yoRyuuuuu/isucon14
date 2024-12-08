@@ -1,6 +1,18 @@
 ---
+- name: before bench for isucon2
+  hosts: isucon2
+  vars_files:
+    - ../vars/vars.yml
+  tasks:
+    - import_tasks: ../roles/before_bench/truncate.yml
+      become: true
+    # - import_tasks: ../roles/before_bench/nginx.yml
+    #   become: true
+    - import_tasks: ../roles/before_bench/mysql.yml
+      become: true
+
 - name: before bench
-  hosts: isucon_server
+  hosts: isucon1
   vars_files:
     - ../vars/vars.yml
   tasks:
@@ -11,5 +23,5 @@
       become: true
     - import_tasks: ../roles/before_bench/nginx.yml
       become: true
-    - import_tasks: ../roles/before_bench/mysql.yml
-      become: true
+    # - import_tasks: ../roles/before_bench/mysql.yml
+    #   become: true
