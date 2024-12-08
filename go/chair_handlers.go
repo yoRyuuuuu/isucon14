@@ -94,6 +94,14 @@ type chairPostCoordinateResponse struct {
 	RecordedAt int64 `json:"recorded_at"`
 }
 
+type distance struct {
+	ChairID   string `db:"chair_id"`
+	CreatedAt int64  `db:"created_at"`
+	Latitude  int    `db:"latitude"`
+	Longitude int    `db:"longitude"`
+	Distance  int    `db:"distance"`
+}
+
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	req := &Coordinate{}
@@ -116,6 +124,28 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		ctx,
 		`INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)`,
 		chairLocationID, chair.ID, req.Latitude, req.Longitude,
+	); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 最新のDistanceを取得
+	distance := &distance{}
+	if err := tx.GetContext(
+		ctx,
+		distance,
+		`SELECT chair_id, created_at, latitude, longitude, distance FROM distance WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
+	); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if _, err := tx.ExecContext(
+		ctx,
+		`INSERT INTO distance (chair_id, created_at, latitude, longitude, distance) VALUES (?, CURRENT_TIMESTAMP(6), ?, ?, ?)`,
+		chair.ID, distance.Latitude, distance.Longitude, distance.Distance+abs(distance.Latitude-req.Latitude)+abs(distance.Longitude-req.Longitude),
 	); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
