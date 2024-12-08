@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/oklog/ulid/v2"
 )
+
+var queue = chairLocationQueue{}
 
 type chairPostChairsRequest struct {
 	Name               string `json:"name"`
@@ -119,18 +120,10 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	var err1 error
-	beforeChairLocation := &ChairLocation{}
-	if err1 = tx.GetContext(
-		ctx,
-		beforeChairLocation,
-		`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
-		chair.ID,
-	); err1 != nil && !errors.Is(err1, sql.ErrNoRows) {
-		log.Printf("GET beforeChairLocation: %v", err1)
-		writeError(w, http.StatusInternalServerError, err1)
-		return
-	}
+	queue.push(&QueueData{
+		chair: chair,
+		req:   req,
+	})
 
 	chairLocationID := ulid.Make().String()
 	if _, err := tx.ExecContext(
@@ -138,47 +131,8 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)`,
 		chairLocationID, chair.ID, req.Latitude, req.Longitude,
 	); err != nil {
-		log.Printf("INSERT chair_locations: %v", err)
 		writeError(w, http.StatusInternalServerError, err)
 		return
-	}
-
-	if !errors.Is(err1, sql.ErrNoRows) {
-		var err error
-		distance := &Distance{}
-		if err = tx.GetContext(
-			ctx,
-			distance,
-			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
-			chair.ID,
-		); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("SELECT chair_distance: %v", err)
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		newDist := abs(beforeChairLocation.Latitude-req.Latitude) + abs(beforeChairLocation.Longitude-req.Longitude)
-		if errors.Is(err, sql.ErrNoRows) {
-			if _, err := tx.ExecContext(
-				ctx,
-				`INSERT INTO chair_distance (chair_id, total_distance, total_distance_updated_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))`,
-				chair.ID, newDist,
-			); err != nil {
-				log.Printf("INSERT chair_distance: %v", err)
-				writeError(w, http.StatusInternalServerError, err)
-				return
-			}
-		} else {
-			if _, err := tx.ExecContext(
-				ctx,
-				`UPDATE chair_distance SET total_distance = ?, total_distance_updated_at = CURRENT_TIMESTAMP(6) WHERE chair_id = ?`,
-				int64(distance.TotalDistance+newDist), chair.ID,
-			); err != nil {
-				log.Printf("UPDATE chair_distance: %v", err)
-				writeError(w, http.StatusInternalServerError, err)
-				return
-			}
-		}
 	}
 
 	location := &ChairLocation{}
