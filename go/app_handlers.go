@@ -765,7 +765,7 @@ func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNoti
 	stats := appGetNotificationResponseChairStats{}
 
 	type RideJoinRideStatus struct {
-		RideID     string    `db:"ride_id"`
+		RideID     string    `db:"id"`
 		Evaluation *int      `db:"evaluation"`
 		Status     string    `db:"status"`
 		CreatedAt  time.Time `db:"created_at"`
