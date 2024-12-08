@@ -7,11 +7,13 @@ DROP TABLE IF EXISTS distance;
 CREATE TABLE distance (
   chair_id VARCHAR(26) NOT NULL COMMENT '割り当てられた椅子ID',
   created_at DATETIME (6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '要求日時',
+  latitude INTEGER NOT NULL COMMENT '経度',
+  longitude INTEGER NOT NULL COMMENT '緯度',
   distance INTEGER COMMENT '移動距離'
 );
 
 INSERT INTO
-  distance (chair_id, created_at, distance)
+  distance (chair_id, created_at, latitude, longitude, distance)
 SELECT
   chair_id,
   created_at,
