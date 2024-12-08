@@ -4,3 +4,4 @@ php
 python
 ruby
 rust
+ansible/vars/secrets.yml
