@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/oklog/ulid/v2"
@@ -125,6 +126,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
 		chair.ID,
 	); err1 != nil && !errors.Is(err1, sql.ErrNoRows) {
+		log.Printf("GET beforeChairLocation: %v", err1)
 		writeError(w, http.StatusInternalServerError, err1)
 		return
 	}
@@ -135,6 +137,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO chair_locations (id, chair_id, latitude, longitude) VALUES (?, ?, ?, ?)`,
 		chairLocationID, chair.ID, req.Latitude, req.Longitude,
 	); err != nil {
+		log.Printf("INSERT chair_locations: %v", err)
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -147,6 +150,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
 			chair.ID,
 		); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("INSERT chair_distance: %v", err)
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
