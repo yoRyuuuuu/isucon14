@@ -15,6 +15,7 @@ ISSUE_URL=$(gh issue create --repo $REPO --title "$TITLE" --body "")
   echo "\`\`\`"
   sudo cat /var/log/nginx/access.log | alp json \
     --sort sum -r \
+    -m "/api/char/rides/\w+,/api/chair/rides/\w+,/api/app/rides/\w+/evaluation,/assets/\w+,/images/\w+" \
     -o count,method,1xx,2xx,3xx,4xx,5xx,uri,min,max,sum,avg
   echo "\`\`\`"
 } > /tmp/alp
