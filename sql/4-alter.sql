@@ -13,10 +13,18 @@ CREATE TABLE distance (
 );
 
 INSERT INTO
-  distance (chair_id, created_at, latitude, longitude, distance)
+  distance (
+    chair_id,
+    created_at,
+    latitude,
+    longitude,
+    distance
+  )
 SELECT
   chair_id,
   created_at,
+  latitude,
+  longitude,
   ABS(
     latitude - LAG (latitude) OVER (
       PARTITION BY
