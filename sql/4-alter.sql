@@ -7,7 +7,8 @@ DROP TABLE IF EXISTS chair_distance;
 CREATE TABLE chair_distance (
   chair_id VARCHAR(26) NOT NULL COMMENT '椅子ID',
   total_distance INTEGER NOT NULL COMMENT '移動距離',
-  total_distance_updated_at DATETIME (6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '更新日時'
+  total_distance_updated_at DATETIME (6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '更新日時',
+  PRIMARY KEY (chair_id)
 );
 
 INSERT INTO
@@ -25,7 +26,7 @@ FROM
     SELECT
       chair_id,
       created_at,
-      ABS(
+      (
         latitude - LAG (latitude) OVER (
           PARTITION BY
             chair_id

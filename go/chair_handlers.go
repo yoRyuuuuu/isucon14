@@ -94,6 +94,12 @@ type chairPostCoordinateResponse struct {
 	RecordedAt int64 `json:"recorded_at"`
 }
 
+type Distance struct {
+	ChairID                string `json:"chair_id"`
+	TotalDistance          int    `json:"total_distance"`
+	TotalDistanceUpdatedAt int64  `json:"total_distance_updated_at"`
+}
+
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	req := &Coordinate{}
@@ -111,6 +117,18 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
+	var err1 error
+	beforeChairLocation := &ChairLocation{}
+	if err1 = tx.GetContext(
+		ctx,
+		beforeChairLocation,
+		`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
+		chair.ID,
+	); err1 != nil && !errors.Is(err1, sql.ErrNoRows) {
+		writeError(w, http.StatusInternalServerError, err1)
+		return
+	}
+
 	chairLocationID := ulid.Make().String()
 	if _, err := tx.ExecContext(
 		ctx,
@@ -119,6 +137,40 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
+	}
+
+	if !errors.Is(err1, sql.ErrNoRows) {
+		distance := &Distance{}
+		if err := tx.GetContext(
+			ctx,
+			distance,
+			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
+			chair.ID,
+		); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		newDist := abs(beforeChairLocation.Latitude-req.Latitude) + abs(beforeChairLocation.Longitude-req.Longitude)
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(
+				ctx,
+				`INSERT INTO chair_distance (chair_id, total_distance, total_distance_updated_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))`,
+				chair.ID, newDist,
+			); err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+		} else {
+			if _, err := tx.ExecContext(
+				ctx,
+				`UPDATE chair_distance SET total_distance = ? WHERE chair_id = ?`,
+				int64(distance.TotalDistance+newDist), chair.ID,
+			); err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+		}
 	}
 
 	location := &ChairLocation{}
