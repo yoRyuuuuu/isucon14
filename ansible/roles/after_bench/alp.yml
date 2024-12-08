@@ -1,0 +1,10 @@
+
+---
+- name: copy notify_result.sh
+  copy:
+    src: ../../../scripts/alp.sh
+    dest: /home/isucon/alp.sh
+    mode: 0755
+
+- name: exec alp.sh
+  shell: /home/isucon/alp.sh
