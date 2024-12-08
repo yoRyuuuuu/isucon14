@@ -97,9 +97,9 @@ type chairPostCoordinateResponse struct {
 }
 
 type Distance struct {
-	ChairID                string `db:"chair_id"`
-	TotalDistance          int    `db:"total_distance"`
-	TotalDistanceUpdatedAt time.Time  `db:"total_distance_updated_at"`
+	ChairID                string    `db:"chair_id"`
+	TotalDistance          int       `db:"total_distance"`
+	TotalDistanceUpdatedAt time.Time `db:"total_distance_updated_at"`
 }
 
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +171,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if _, err := tx.ExecContext(
 				ctx,
-				`UPDATE chair_distance SET total_distance = ? WHERE chair_id = ?`,
+				`UPDATE chair_distance SET total_distance = ?, total_distance_update_at = CURRENT_TIMESTAMP(6) WHERE chair_id = ?`,
 				int64(distance.TotalDistance+newDist), chair.ID,
 			); err != nil {
 				log.Printf("UPDATE chair_distance: %v", err)
