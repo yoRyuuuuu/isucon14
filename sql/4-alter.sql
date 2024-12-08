@@ -44,4 +44,4 @@ FROM
       chair_locations
   ) tmp
 GROUP BY
-  chair_id
+  chair_id;
