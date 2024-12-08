@@ -791,9 +791,10 @@ func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNoti
 	totalRideCount := 0
 	totalEvaluation := 0.0
 	for _, r := range rideJoinRideStatuses {
+		var arrivedAt, pickupedAt *time.Time
+		var isCompleted bool
+
 		for _, rs := range mapRideIDToRideJoinRideStatus[r.RideID] {
-			var arrivedAt, pickupedAt *time.Time
-			var isCompleted bool
 			if rs.Status == "ARRIVED" {
 				arrivedAt = &rs.CreatedAt
 			} else if rs.Status == "CARRYING" {
@@ -802,12 +803,13 @@ func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNoti
 			if rs.Status == "COMPLETED" {
 				isCompleted = true
 			}
-			if arrivedAt == nil || pickupedAt == nil {
-				continue
-			}
-			if !isCompleted {
-				continue
-			}
+		}
+
+		if arrivedAt == nil || pickupedAt == nil {
+			continue
+		}
+		if !isCompleted {
+			continue
 		}
 
 		totalRideCount++
