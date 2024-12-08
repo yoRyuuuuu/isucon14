@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/oklog/ulid/v2"
 )
@@ -96,9 +97,9 @@ type chairPostCoordinateResponse struct {
 }
 
 type Distance struct {
-	ChairID                string `db:"chair_id"`
-	TotalDistance          int    `db:"total_distance"`
-	TotalDistanceUpdatedAt int64  `db:"total_distance_updated_at"`
+	ChairID                string    `db:"chair_id"`
+	TotalDistance          int       `db:"total_distance"`
+	TotalDistanceUpdatedAt time.Time `db:"total_distance_updated_at"`
 }
 
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +144,9 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !errors.Is(err1, sql.ErrNoRows) {
+		var err error
 		distance := &Distance{}
-		if err := tx.GetContext(
+		if err = tx.GetContext(
 			ctx,
 			distance,
 			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
@@ -169,7 +171,7 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		} else {
 			if _, err := tx.ExecContext(
 				ctx,
-				`UPDATE chair_distance SET total_distance = ? WHERE chair_id = ?`,
+				`UPDATE chair_distance SET total_distance = ?, total_distance_updated_at = CURRENT_TIMESTAMP(6) WHERE chair_id = ?`,
 				int64(distance.TotalDistance+newDist), chair.ID,
 			); err != nil {
 				log.Printf("UPDATE chair_distance: %v", err)
