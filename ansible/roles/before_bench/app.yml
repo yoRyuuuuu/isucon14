@@ -1,0 +1,12 @@
+---
+- name: build go application
+  shell:
+    chdir: "{{ go_app_root }}"
+    cmd: "{{ go_bin_path }} build -o isucondition"
+    executable: /bin/bash
+
+- name: restart go application
+  service:
+    name: "{{ service_name }}"
+    state: restarted
+    enabled: yes

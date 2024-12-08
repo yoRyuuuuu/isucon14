@@ -1,0 +1,5 @@
+---
+- name: install graphviz
+  ansible.builtin.apt:
+    name: graphviz
+    state: latest

@@ -1,0 +1,9 @@
+- name: pull resources from GitHub
+  git:
+    repo: "{{ github.repo_url }}"
+    dest: "{{ git_root }}"
+    force: yes
+    update: yes
+    accept_newhostkey: true
+    key_file: "{{ private_key_path }}"
+    version: "{{ deploy_branch }}"

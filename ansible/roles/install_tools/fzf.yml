@@ -1,0 +1,22 @@
+---
+- name: install fzf
+  get_url:
+    url: https://github.com/junegunn/fzf/releases/download/v0.56.2/fzf-0.56.2-linux_amd64.tar.gz
+    dest: /tmp
+    mode: 0644
+
+- name: extract fzf
+  unarchive:
+    src: /tmp/fzf-0.56.2-linux_amd64.tar.gz
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: 0755
+
+- name: execute fzf
+  shell: fzf --version
+
+- name: insert fzf initialization to .bashrc
+  lineinfile:
+    path: /home/isucon/.bashrc
+    line: eval "$(fzf --bash)"
+    backrefs: false

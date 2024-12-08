@@ -1,0 +1,31 @@
+---
+github:
+  repo_url: git@github.com:yoRyuuuuu/isucon14.git
+  repo_name: isucon14
+  user_name: yoRyuuuuu
+  repo_owner: yoRyuuuuu
+
+initialize_ansible_user: ubuntu
+initialize_ansible_ssh_private_key_file: ~/.ssh/isucon
+
+private_key_path: /home/isucon/.ssh/id_ed25519
+
+# チーム全員の公開鍵を取得するようにする
+# 例: https://github.com/{yoRyuuuuu,user2,user3}.keys
+git_ssh_key_url: https://github.com/{yoRyuuuuu,shogo82148,midorigame737}.keys
+
+# 以下はアプリケーションサーバーを参照しながら設定する
+git_root: /home/isucon/webapp
+go_app_root: /home/isucon/webapp/go
+go_bin_path: /home/isucon/local/go/bin/go
+service_name: isu-go.service
+
+nginx:
+  conf_dir:
+    src: "../../{{ server_id }}/etc/nginx"
+    dest: /etc/nginx
+
+mysql:
+  conf_dir:
+    src: "../../{{ server_id }}/etc/mysql"
+    dest: /etc/mysql

@@ -1,0 +1,25 @@
+---
+- name: install tools
+  hosts: isucon_server
+  vars_files:
+    - ../vars/vars.yml
+    - ../vars/secrets.yml
+  tasks:
+    - import_tasks: ../roles/install_tools/git.yml
+    - import_tasks: ../roles/install_tools/gh.yml
+    - import_tasks: ../roles/install_tools/alp.yml
+      become: true
+    - import_tasks: ../roles/install_tools/htop.yml
+      become: true
+    - import_tasks: ../roles/install_tools/pt-query-digest.yml
+      become: true
+    - import_tasks: ../roles/install_tools/slp.yml
+      become: true
+    - import_tasks: ../roles/install_tools/lazygit.yml
+      become: true
+    - import_tasks: ../roles/install_tools/graphviz.yml
+      become: true
+    - import_tasks: ../roles/install_tools/fzf.yml
+      become: true
+    - import_tasks: ../roles/install_tools/sml.yml
+      become: true

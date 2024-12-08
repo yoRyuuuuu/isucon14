@@ -1,0 +1,21 @@
+---
+- name: create .ssh directory
+  file:
+    path: /home/isucon/.ssh
+    state: directory
+
+- name: get public key
+  shell: |
+    curl "{{ git_ssh_key_url }}" >> /home/isucon/.ssh/authorized_keys
+
+- name: change owner
+  file:
+    path: /home/isucon/.ssh
+    owner: isucon
+    group: isucon
+    recurse: yes
+
+- name: change permission of authorized_keys
+  file:
+    path: /home/isucon/.ssh/authorized_keys
+    mode: 0644

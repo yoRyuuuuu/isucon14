@@ -1,0 +1,13 @@
+---
+- name: copy /etc/nginx
+  copy:
+    src: "{{ nginx.conf_dir.src }}/"
+    dest: "{{ nginx.conf_dir.dest }}"
+    mode: 0644
+    backup: yes
+
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes

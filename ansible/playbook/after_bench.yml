@@ -1,0 +1,7 @@
+---
+- name: after bench
+  hosts: isucon1
+  vars_files:
+    - ../vars/vars.yml
+  tasks:
+    - import_tasks: ../roles/after_bench/notify.yml

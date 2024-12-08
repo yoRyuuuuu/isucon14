@@ -1,0 +1,20 @@
+---
+- name: copy /etc/mysql
+  copy:
+    src: "{{ mysql.conf_dir.src }}/"
+    dest: "{{ mysql.conf_dir.dest }}"
+    mode: 0644
+    backup: yes
+
+- name: change file ownership /var/log/mysql/mysql-slow.log
+  file:
+    path: /var/log/mysql/mysql-slow.log
+    owner: mysql
+    group: adm
+    mode: 0644
+
+- name: restart mysql
+  service:
+    name: mysql
+    state: restarted
+    enabled: yes

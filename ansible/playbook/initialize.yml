@@ -1,0 +1,12 @@
+---
+- name: set ssh key
+  hosts: all
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_user: "{{ initialize_ansible_user }}"
+    ansible_ssh_private_key_file: "{{ initialize_ansible_ssh_private_key_file }}"
+  vars_files:
+    - "../vars/vars.yml"
+  tasks:
+    - import_tasks: ../roles/initialize/ssh-key.yml
+      become: true

@@ -1,0 +1,22 @@
+---
+- name: install percona-toolkit
+  get_url:
+    url: https://downloads.percona.com/downloads/percona-toolkit/3.5.1/binary/tarball/percona-toolkit-3.5.1_x86_64.tar.gz
+    dest: /tmp
+
+- name: extract percona-toolkit
+  unarchive:
+    src: /tmp/percona-toolkit-3.5.1_x86_64.tar.gz
+    dest: /tmp
+    remote_src: yes
+    mode: 0644
+
+- name: copy pt-query-digest
+  copy:
+    src: /tmp/percona-toolkit-3.5.1/bin/pt-query-digest
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: 0755
+
+- name: exec pt-query-digest
+  shell: pt-query-digest --version

@@ -1,0 +1,9 @@
+---
+- name: copy notify_result.sh
+  copy:
+    src: ../../../scripts/notify_result.sh
+    dest: /home/isucon/notify_result.sh
+    mode: 0755
+
+- name: exec notify_result.sh
+  shell: /home/isucon/notify_result.sh
