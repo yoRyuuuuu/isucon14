@@ -28,7 +28,7 @@ func main() {
 	mux := setup()
 	slog.Info("Listening on :8080")
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(2500 * time.Microsecond)
 	go func() {
 		for {
 			select {
