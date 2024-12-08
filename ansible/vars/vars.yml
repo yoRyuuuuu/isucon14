@@ -17,8 +17,8 @@ git_ssh_key_url: https://github.com/{yoRyuuuuu,shogo82148,midorigame737}.keys
 # 以下はアプリケーションサーバーを参照しながら設定する
 git_root: /home/isucon/webapp
 go_app_root: /home/isucon/webapp/go
-go_bin_path: /home/isucon/local/go/bin/go
-service_name: isu-go.service
+go_bin_path: /home/isucon/local/golang/bin/go
+service_name: isuride-go.service
 
 nginx:
   conf_dir:

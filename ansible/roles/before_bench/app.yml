@@ -2,7 +2,7 @@
 - name: build go application
   shell:
     chdir: "{{ go_app_root }}"
-    cmd: "{{ go_bin_path }} build -o isucondition"
+    cmd: "{{ go_bin_path }} build -o isuride"
     executable: /bin/bash
 
 - name: restart go application
