@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/oklog/ulid/v2"
 )
@@ -98,7 +99,7 @@ type chairPostCoordinateResponse struct {
 type Distance struct {
 	ChairID                string `db:"chair_id"`
 	TotalDistance          int    `db:"total_distance"`
-	TotalDistanceUpdatedAt int64  `db:"total_distance_updated_at"`
+	TotalDistanceUpdatedAt time.Time  `db:"total_distance_updated_at"`
 }
 
 func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
