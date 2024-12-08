@@ -1,7 +1,16 @@
 ---
 - name: after bench
-  hosts: isucon1
+  hosts:
+    - isucon1
   vars_files:
     - ../vars/vars.yml
   tasks:
-    - import_tasks: ../roles/after_bench/notify.yml
+    - import_tasks: ../roles/after_bench/alp.yml
+
+- name: after bench for isucon2
+  hosts:
+    - isucon2
+  vars_files:
+    - ../vars/vars.yml
+  tasks:
+    - import_tasks: ../roles/after_bench/slow-query.yml
