@@ -34,7 +34,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				if err := queue.insert(context.Background()); err != nil {
-					slog.Error("failed to insert queue", err)
+					slog.Error("failed to insert queue", slog.String("error", err.Error()))
 				}
 			}
 		}
