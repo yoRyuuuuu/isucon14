@@ -143,8 +143,9 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !errors.Is(err1, sql.ErrNoRows) {
+		var err error
 		distance := &Distance{}
-		if err := tx.GetContext(
+		if err = tx.GetContext(
 			ctx,
 			distance,
 			`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
