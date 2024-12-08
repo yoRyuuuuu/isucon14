@@ -1,0 +1,10 @@
+
+---
+- name: copy slow-query.sh
+  copy:
+    src: ../../../scripts/slow-query.sh
+    dest: /home/isucon/slow-query.sh
+    mode: 0755
+
+- name: exec slow-query.sh
+  shell: /home/isucon/slow-query.sh
