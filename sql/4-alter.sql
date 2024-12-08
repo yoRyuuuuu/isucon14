@@ -6,6 +6,8 @@ CREATE INDEX chair_id_updated_at_idx ON chair_locations (chair_id, created_at DE
 
 CREATE INDEX chairs_access_token_idx ON chairs(access_token);
 
+CREATE INDEX rides_idx ON rides(user_id,created_at DESC);
+
 DROP TABLE IF EXISTS chair_distance;
 
 CREATE TABLE chair_distance (
