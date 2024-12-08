@@ -1,6 +1,6 @@
 ---
 - name: before bench
-  hosts: isucon1
+  hosts: isucon_server
   vars_files:
     - ../vars/vars.yml
   tasks:
