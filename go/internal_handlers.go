@@ -22,9 +22,9 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type chairJoinChairLocation struct {
-		CharID    int `db:"id"`
-		Latitude  int `db:"latitude"`
-		Longitude int `db:"longitude"`
+		ChairID    string `db:"id"`
+		Latitude  int    `db:"latitude"`
+		Longitude int    `db:"longitude"`
 	}
 
 	possibleChairs := []*chairJoinChairLocation{}
@@ -36,14 +36,14 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var matchedID int
+	var matchedID string
 	minDistance := math.MaxInt
 	empty := false
 	for _, chair := range possibleChairs {
 		distance := abs(chair.Latitude-ride.PickupLatitude) + abs(chair.Longitude-ride.PickupLongitude)
 		if distance < minDistance {
 			minDistance = distance
-			matchedID = chair.CharID
+			matchedID = chair.ChairID
 		}
 
 		if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", matchedID); err != nil {
