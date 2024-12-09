@@ -872,9 +872,18 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 
 	type ChairJoinRide struct {
-		Ride
-		ChairName  string `db:"name"`
-		ChairModel string `db:"model"`
+		ID                   string         `db:"id"`
+		UserID               string         `db:"user_id"`
+		ChairID              sql.NullString `db:"chair_id"`
+		PickupLatitude       int            `db:"pickup_latitude"`
+		PickupLongitude      int            `db:"pickup_longitude"`
+		DestinationLatitude  int            `db:"destination_latitude"`
+		DestinationLongitude int            `db:"destination_longitude"`
+		Evaluation           *int           `db:"evaluation"`
+		CreatedAt            time.Time      `db:"created_at"`
+		UpdatedAt            time.Time      `db:"updated_at"`
+		ChairName            string         `db:"name"`
+		ChairModel           string         `db:"model"`
 	}
 
 	chairJoinRides := []*ChairJoinRide{}
