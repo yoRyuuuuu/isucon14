@@ -875,13 +875,13 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 		Ride
 		ChairName  string `db:"name"`
 		ChairModel string `db:"model"`
+		IsActive   bool   `db:"is_active"`
 	}
 
 	chairJoinRides := []*ChairJoinRide{}
 	query := `
-SELECT c.name, c.model, r.id, r.user_id, r.chair_id, r.pickup_latitude, r.pickup_longitude, r.destination_latitude, r.destination_longitude, r.evaluation, r.created_at, r.updated_at FROM chairs AS c
+SELECT c.name, c.model, c.is_active, r.id, r.user_id, r.chair_id, r.pickup_latitude, r.pickup_longitude, r.destination_latitude, r.destination_longitude, r.evaluation, r.created_at, r.updated_at FROM chairs AS c
 	INNER JOIN rides AS r ON c.id = r.chair_id
-	WHERE c.is_active = TRUE
 	ORDER BY r.created_at DESC
 `
 	if err := tx.SelectContext(ctx, &chairJoinRides, query); err != nil {
@@ -891,6 +891,10 @@ SELECT c.name, c.model, r.id, r.user_id, r.chair_id, r.pickup_latitude, r.pickup
 
 	nearbyChairs := []appGetNearbyChairsResponseChair{}
 	for _, ride := range chairJoinRides {
+		if !ride.IsActive {
+			continue
+		}
+
 		skip := false
 		for _, ride := range chairJoinRides {
 			// 過去にライドが存在し、かつ、それが完了していない場合はスキップ
