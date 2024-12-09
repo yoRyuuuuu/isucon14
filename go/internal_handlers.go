@@ -12,7 +12,7 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
 	rides := []*Ride{}
-	if err := db.SelectContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 10`); err != nil {
+	if err := db.SelectContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 50`); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -31,7 +31,7 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	if err := db.SelectContext(ctx, &chairJoinChairLocation, `
 		 SELECT chairs.*, chair_locations.latitude, chair_locations.longitude FROM chairs
 				INNER JOIN chair_locations ON chairs.id = chair_locations.chair_id
-				WHERE chairs.is_active = TRUE;
+				WHERE chairs.is_active = TRUE LIMIT 50;
 	`); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent)
