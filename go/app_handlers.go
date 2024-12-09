@@ -871,27 +871,28 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	chairs := []Chair{}
-	err = tx.SelectContext(
-		ctx,
-		&chairs,
-		`SELECT * FROM chairs WHERE is_active = TRUE`,
-	)
-	if err != nil {
+	type ChairJoinRide struct {
+		Ride
+		ChairName  string `db:"name"`
+		ChairModel string `db:"model"`
+	}
+
+	chairJoinRides := []*ChairJoinRide{}
+	query := `
+SELECT c.name, c.model, r.id, r.user_id, r.chair_id, r.pickup_latitude, r.pickup_longitude, r.destination_latitude, r.destination_longitude, r.evaluation, r.created_at, r.updated_at FROM chairs AS c
+	INNER JOIN rides AS r ON c.id = r.chair_id
+	WHERE c.is_active = TRUE
+	ORDER BY r.created_at DESC
+`
+	if err := tx.GetContext(ctx, &chairJoinRides, query); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	nearbyChairs := []appGetNearbyChairsResponseChair{}
-	for _, chair := range chairs {
-		rides := []*Ride{}
-		if err := tx.SelectContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id = ? ORDER BY created_at DESC`, chair.ID); err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-
+	for _, ride := range chairJoinRides {
 		skip := false
-		for _, ride := range rides {
+		for _, ride := range chairJoinRides {
 			// 過去にライドが存在し、かつ、それが完了していない場合はスキップ
 			status, err := getLatestRideStatus(ctx, tx, ride.ID)
 			if err != nil {
@@ -913,7 +914,7 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 			ctx,
 			chairLocation,
 			`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
-			chair.ID,
+			ride.ChairID,
 		)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -925,9 +926,9 @@ func appGetNearbyChairs(w http.ResponseWriter, r *http.Request) {
 
 		if calculateDistance(coordinate.Latitude, coordinate.Longitude, chairLocation.Latitude, chairLocation.Longitude) <= distance {
 			nearbyChairs = append(nearbyChairs, appGetNearbyChairsResponseChair{
-				ID:    chair.ID,
-				Name:  chair.Name,
-				Model: chair.Model,
+				ID:    ride.ChairID.String,
+				Name:  ride.ChairName,
+				Model: ride.ChairModel,
 				CurrentCoordinate: Coordinate{
 					Latitude:  chairLocation.Latitude,
 					Longitude: chairLocation.Longitude,
