@@ -760,46 +760,51 @@ func appGetNotification(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
+// FIXME: N+1問題の可能性あり
 func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNotificationResponseChairStats, error) {
 	stats := appGetNotificationResponseChairStats{}
 
-	rides := []Ride{}
-	err := tx.SelectContext(
-		ctx,
-		&rides,
-		`SELECT * FROM rides WHERE chair_id = ? ORDER BY updated_at DESC`,
-		chairID,
-	)
-	if err != nil {
-		return stats, err
+	type RideJoinRideStatus struct {
+		RideID     string    `db:"id"`
+		Evaluation *int      `db:"evaluation"`
+		Status     string    `db:"status"`
+		CreatedAt  time.Time `db:"created_at"`
+	}
+
+	query := `
+		SELECT r.id, r.evaluation, rs.status, rs.created_at FROM rides AS r
+			INNER JOIN ride_statuses AS rs ON r.id = rs.ride_id
+			WHERE r.chair_id = ?
+			ORDER BY rs.created_at
+	`
+
+	rideJoinRideStatuses := []RideJoinRideStatus{}
+	if err := tx.SelectContext(ctx, &rideJoinRideStatuses, query, chairID); err != nil {
+		return appGetNotificationResponseChairStats{}, err
+	}
+
+	mapRideIDToRideJoinRideStatus := map[string][]RideJoinRideStatus{}
+	for _, r := range rideJoinRideStatuses {
+		mapRideIDToRideJoinRideStatus[r.RideID] = append(mapRideIDToRideJoinRideStatus[r.RideID], r)
 	}
 
 	totalRideCount := 0
 	totalEvaluation := 0.0
-	for _, ride := range rides {
-		rideStatuses := []RideStatus{}
-		err = tx.SelectContext(
-			ctx,
-			&rideStatuses,
-			`SELECT * FROM ride_statuses WHERE ride_id = ? ORDER BY created_at`,
-			ride.ID,
-		)
-		if err != nil {
-			return stats, err
-		}
-
+	for _, r := range rideJoinRideStatuses {
 		var arrivedAt, pickupedAt *time.Time
 		var isCompleted bool
-		for _, status := range rideStatuses {
-			if status.Status == "ARRIVED" {
-				arrivedAt = &status.CreatedAt
-			} else if status.Status == "CARRYING" {
-				pickupedAt = &status.CreatedAt
+
+		for _, rs := range mapRideIDToRideJoinRideStatus[r.RideID] {
+			if rs.Status == "ARRIVED" {
+				arrivedAt = &rs.CreatedAt
+			} else if rs.Status == "CARRYING" {
+				pickupedAt = &rs.CreatedAt
 			}
-			if status.Status == "COMPLETED" {
+			if rs.Status == "COMPLETED" {
 				isCompleted = true
 			}
 		}
+
 		if arrivedAt == nil || pickupedAt == nil {
 			continue
 		}
@@ -808,7 +813,7 @@ func getChairStats(ctx context.Context, tx *sqlx.Tx, chairID string) (appGetNoti
 		}
 
 		totalRideCount++
-		totalEvaluation += float64(*ride.Evaluation)
+		totalEvaluation += float64(*r.Evaluation)
 	}
 
 	stats.TotalRidesCount = totalRideCount
