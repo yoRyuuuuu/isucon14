@@ -56,12 +56,19 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	}
 
 	empty := false
-	if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", nearest.ID); err != nil {
+	if err := db.GetContext(ctx, &empty, `
+		SELECT COUNT(*) = 0
+		FROM ride_statuses
+		WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?)
+		GROUP BY ride_id
+		HAVING COUNT(chair_sent_at) < 6
+	`, nearest.ID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-	if !empty {
-		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
