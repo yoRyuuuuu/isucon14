@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"math"
 	"net/http"
 )
 
@@ -20,10 +21,11 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matched := &Chair{}
-	empty := false
+	var matched *Chair
+	minDistance := math.MaxInt
 	for i := 0; i < 10; i++ {
-		if err := db.GetContext(ctx, matched, "SELECT * FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1"); err != nil {
+		prevMatched := &Chair{}
+		if err := db.GetContext(ctx, prevMatched, "SELECT * FROM chairs INNER JOIN (SELECT id FROM chairs WHERE is_active = TRUE ORDER BY RAND() LIMIT 1) AS tmp ON chairs.id = tmp.id LIMIT 1"); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -31,15 +33,32 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err)
 		}
 
+		chairLocation := &ChairLocation{}
+		if err := db.GetContext(ctx, chairLocation, "SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1", matched.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+
+		dist := calculateDistance(ride.PickupLatitude, ride.PickupLongitude, chairLocation.Latitude, chairLocation.Longitude)
+		if dist >= minDistance {
+			continue
+		}
+
+		empty := false
 		if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", matched.ID); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
+
 		if empty {
-			break
+			minDistance = dist
+			matched = prevMatched
 		}
 	}
-	if !empty {
+
+	if matched == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
