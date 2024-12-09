@@ -5,6 +5,17 @@
     cmd: "{{ go_bin_path }} build -o isuride"
     executable: /bin/bash
 
+- name: copy service.conf
+  copy:
+    src: "{{ app_service.conf_dir.src }}/"
+    dest: "{{ app_service.conf_dir.dest }}"
+    mode: 0644
+    backup: yes
+
+- name: daemon-reload
+  systemd:
+    daemon_reload: yes
+
 - name: restart go application
   service:
     name: "{{ service_name }}"

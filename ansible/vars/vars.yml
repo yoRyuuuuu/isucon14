@@ -29,3 +29,8 @@ mysql:
   conf_dir:
     src: "../../{{ server_id }}/etc/mysql"
     dest: /etc/mysql
+
+app_service:
+  conf_dir:
+    src: "../../{{ server_id }}/etc/systemd/system"
+    dest: /etc/systemd/system
