@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"math"
 	"net/http"
-	"slices"
 )
 
 // このAPIをインスタンス内から一定間隔で叩かせることで、椅子とライドをマッチングさせる
@@ -12,7 +12,7 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
 	rides := []*Ride{}
-	if err := db.GetContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 10`); err != nil {
+	if err := db.SelectContext(ctx, &rides, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 10`); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -44,8 +44,8 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	for _, ride := range rides {
 		// 一番近い椅子を探す
 		var matched *ChairJoinChairLocation
-		var minDistance int
 		var idx int
+		minDistance := math.MaxInt
 		for i, chair := range chairJoinChairLocation {
 			distance := abs(chair.Latitude-ride.PickupLatitude) + abs(chair.Longitude-ride.PickupLongitude)
 			if matched == nil || distance < minDistance {
@@ -65,11 +65,17 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		} else {
-			chairJoinChairLocation = slices.Delete(chairJoinChairLocation, idx, 1)
+			// マッチング成功
+			// スライスからマッチングした椅子を削除
+			chairJoinChairLocation = append(chairJoinChairLocation[:idx], chairJoinChairLocation[idx+1:]...)
 			if _, err := db.ExecContext(ctx, "UPDATE rides SET chair_id = ? WHERE id = ?", matched.ID, ride.ID); err != nil {
 				writeError(w, http.StatusInternalServerError, err)
 				return
 			}
+		}
+
+		if len(chairJoinChairLocation) == 0 {
+			break
 		}
 	}
 
