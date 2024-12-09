@@ -4,14 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"slices"
 )
 
 // このAPIをインスタンス内から一定間隔で叩かせることで、椅子とライドをマッチングさせる
 func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// MEMO: 一旦最も待たせているリクエストに適当な空いている椅子マッチさせる実装とする。おそらくもっといい方法があるはず…
-	ride := &Ride{}
-	if err := db.GetContext(ctx, ride, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 1`); err != nil {
+	rides := []*Ride{}
+	if err := db.GetContext(ctx, rides, `SELECT * FROM rides WHERE chair_id IS NULL ORDER BY created_at LIMIT 10`); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -20,34 +21,55 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matched := &Chair{}
-	empty := false
-	if err := db.GetContext(ctx, matched, `
-            SELECT chairs.* FROM chairs
-            INNER JOIN chair_locations ON chairs.id = chair_locations.chair_id
-            WHERE chairs.is_active = TRUE
-            ORDER BY ABS(chair_locations.latitude - ?) + ABS(chair_locations.longitude - ?)
-            LIMIT 1
-        `, ride.PickupLatitude, ride.PickupLongitude); err != nil {
+	type ChairJoinChairLocation struct {
+		Chair
+		Latitude  int `db:"latitude"`
+		Longitude int `db:"longitude"`
+	}
+
+	chairJoinChairLocation := []*ChairJoinChairLocation{}
+	if err := db.SelectContext(ctx, chairJoinChairLocation, `
+		 SELECT chairs.*, chair_locations.latitude, chair_locations.longitude FROM chairs
+				INNER JOIN chair_locations ON chairs.id = chair_locations.chair_id
+				WHERE chairs.is_active = TRUE;
+	`); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err)
-	}
-
-	if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", matched.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-	if !empty {
-		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if _, err := db.ExecContext(ctx, "UPDATE rides SET chair_id = ? WHERE id = ?", matched.ID, ride.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+	for _, ride := range rides {
+		// 一番近い椅子を探す
+		var matched *ChairJoinChairLocation
+		var minDistance int
+		var idx int
+		for i, chair := range chairJoinChairLocation {
+			distance := abs(chair.Latitude-ride.PickupLatitude) + abs(chair.Longitude-ride.PickupLongitude)
+			if matched == nil || distance < minDistance {
+				matched = chair
+				minDistance = distance
+				idx = i
+			}
+		}
+
+		empty := false
+		if err := db.GetContext(ctx, &empty, "SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE", matched.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		if !empty {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		} else {
+			chairJoinChairLocation = slices.Delete(chairJoinChairLocation, idx, 1)
+			if _, err := db.ExecContext(ctx, "UPDATE rides SET chair_id = ? WHERE id = ?", matched.ID, ride.ID); err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
