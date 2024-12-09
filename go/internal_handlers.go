@@ -36,7 +36,6 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 			GROUP BY chair_id) AS sub ON chairs.id = sub.chair_id
 			INNER JOIN chair_locations ON chair_locations.chair_id = chairs.id AND chair_locations.created_at = sub.latest
 			WHERE chairs.is_active = TRUE
-			LIMIT 10
 	`
 
 	chairs := []ChairJoinChairLocation{}
