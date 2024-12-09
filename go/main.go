@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	crand "crypto/rand"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -10,6 +13,8 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -22,6 +27,19 @@ var db *sqlx.DB
 func main() {
 	mux := setup()
 	slog.Info("Listening on :8080")
+
+	ticker := time.NewTicker(2500 * time.Microsecond)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := queue.insert(context.Background()); err != nil {
+					slog.Error("failed to insert queue", slog.String("error", err.Error()))
+				}
+			}
+		}
+	}()
+
 	http.ListenAndServe(":8080", mux)
 }
 
@@ -181,4 +199,94 @@ func secureRandomStr(b int) string {
 		panic(err)
 	}
 	return fmt.Sprintf("%x", k)
+}
+
+// chair_locations をキューイングする構造体
+type chairLocationQueue struct {
+	mu    sync.Mutex
+	queue []*QueueData
+}
+
+type QueueData struct {
+	chair *Chair
+	req   *Coordinate
+}
+
+func (q *chairLocationQueue) push(d *QueueData) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.queue = append(q.queue, d)
+}
+
+func (q *chairLocationQueue) insert(ctx context.Context) error {
+	q.mu.Lock()
+
+	if len(q.queue) == 0 {
+		q.mu.Unlock()
+		return nil
+	}
+
+	data := []*QueueData{}
+	copy(data, q.queue)
+
+	clear(q.queue)
+
+	q.mu.Unlock()
+
+	tx, err := db.Beginx()
+	if err != nil {
+		return errors.New("failed to begin transaction: " + err.Error())
+	}
+	defer tx.Rollback()
+
+	for _, d := range data {
+		var err1 error
+		beforeChairLocation := &ChairLocation{}
+		if err1 = tx.GetContext(
+			ctx,
+			beforeChairLocation,
+			`SELECT * FROM chair_locations WHERE chair_id = ? ORDER BY created_at DESC LIMIT 1`,
+			d.chair.ID,
+		); err1 != nil && !errors.Is(err1, sql.ErrNoRows) {
+			return errors.New("failed to get beforeChairLocation: " + err1.Error())
+		}
+
+		if !errors.Is(err1, sql.ErrNoRows) {
+			var err error
+			distance := &Distance{}
+			if err = tx.GetContext(
+				ctx,
+				distance,
+				`SELECT chair_id, total_distance, total_distance_updated_at FROM chair_distance WHERE chair_id = ?`,
+				d.chair.ID,
+			); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+
+			newDist := abs(beforeChairLocation.Latitude-d.req.Latitude) + abs(beforeChairLocation.Longitude-d.req.Longitude)
+			if errors.Is(err, sql.ErrNoRows) {
+				if _, err := tx.ExecContext(
+					ctx,
+					`INSERT INTO chair_distance (chair_id, total_distance, total_distance_updated_at) VALUES (?, ?, CURRENT_TIMESTAMP(6))`,
+					d.chair.ID, newDist,
+				); err != nil {
+					return err
+				}
+			} else {
+				if _, err := tx.ExecContext(
+					ctx,
+					`UPDATE chair_distance SET total_distance = ?, total_distance_updated_at = CURRENT_TIMESTAMP(6) WHERE chair_id = ?`,
+					int64(distance.TotalDistance+newDist), d.chair.ID,
+				); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return errors.New("failed to commit transaction: " + err.Error())
+	}
+
+	return nil
 }
