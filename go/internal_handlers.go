@@ -29,13 +29,9 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 
 	possibleChairs := []*chairJoinChairLocation{}
 
-	query := `
-		SELECT c.id, cl.latitude, cl.longitude FROM chairs AS c
-			INNER JOIN chair_locations AS cl ON c.id = cl.chair_id
-			WHERE c.is_active = TRUE
-	`
+	query := `SELECT c.id, cl.latitude, cl.longitude FROM chairs AS c INNER JOIN chair_locations AS cl ON c.id = cl.chair_id WHERE c.is_active = TRUE LIMIT 10`
 
-	if err := db.SelectContext(ctx, possibleChairs, query); err != nil {
+	if err := db.SelectContext(ctx, &possibleChairs, query); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
