@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"math"
 	"net/http"
+	"sort"
 )
 
 // このAPIをインスタンス内から一定間隔で叩かせることで、椅子とライドをマッチングさせる
@@ -26,6 +26,7 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 		Chair
 		Latitude  int `db:"latitude"`
 		Longitude int `db:"longitude"`
+		Distance  int
 	}
 
 	// アクティブな椅子の最新の位置情報を取得
@@ -44,37 +45,27 @@ func internalGetMatching(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 一番近い椅子を探す
-	nearest := &ChairJoinChairLocation{}
-	minDist := math.MaxInt
-	for _, chair := range chairs {
-		dist := calculateDistance(ride.DestinationLatitude, ride.DestinationLongitude, chair.Latitude, chair.Longitude)
-		if dist < minDist {
-			minDist = dist
-			nearest = &chair
-		}
-	}
+	// 乗車地点からの距離でソート
+	sort.Slice(chairs, func(i, j int) bool {
+		left := chairs[i]
+		right := chairs[j]
+		return calculateDistance(ride.DestinationLatitude, ride.DestinationLongitude, left.Latitude, left.Longitude) < calculateDistance(ride.DestinationLatitude, ride.DestinationLongitude, right.Latitude, right.Longitude)
+	})
 
-	empty := false
-	if err := db.GetContext(ctx, &empty, `
-		SELECT COUNT(*) = 0
-		FROM ride_statuses
-		WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?)
-		GROUP BY ride_id
-		HAVING COUNT(chair_sent_at) < 6
-	`, nearest.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNoContent)
+	// 一番近い椅子を探す
+	for _, chair := range chairs {
+		empty := false
+		if err := db.GetContext(ctx, &empty, `SELECT COUNT(*) = 0 FROM (SELECT COUNT(chair_sent_at) = 6 AS completed FROM ride_statuses WHERE ride_id IN (SELECT id FROM rides WHERE chair_id = ?) GROUP BY ride_id) is_completed WHERE completed = FALSE`, chair.ID); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	if _, err := db.ExecContext(ctx, "UPDATE rides SET chair_id = ? WHERE id = ?", nearest.ID, ride.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		if !empty {
+			if _, err := db.ExecContext(ctx, "UPDATE rides SET chair_id = ? WHERE id = ?", chair.ID, ride.ID); err != nil {
+				writeError(w, http.StatusInternalServerError, err)
+				return
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
