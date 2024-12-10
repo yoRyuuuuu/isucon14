@@ -51,7 +51,7 @@ func chairPostChairs(w http.ResponseWriter, r *http.Request) {
 	_, err := db.ExecContext(
 		ctx,
 		"INSERT INTO chairs (id, owner_id, name, model, is_active, access_token) VALUES (?, ?, ?, ?, ?, ?)",
-		chairID, owner.ID, req.Name, req.Model, false, accessToken,
+		chairID, owner.ID, req.Name, req.Model, true, accessToken,
 	)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
